@@ -32,6 +32,7 @@ RUN for _runtime in ./runtimes/*; \
     done
 
 COPY requirements/docker.txt requirements/docker.txt
+
 RUN pip install -r requirements/docker.txt
 
 COPY ./licenses/license.txt .
