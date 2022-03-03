@@ -1,0 +1,63 @@
+name: Build and Push
+
+on:
+  push:
+    branches:
+      - main
+      - main-thesis
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - '.github/**'
+      - '.tekton/**'
+    tags:
+      - v*
+
+jobs:
+  # Ensure that tests pass before publishing a new image.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Prepare
+        id: prep
+        run: |
+          GIT_COMMIT=$(git rev-parse HEAD)
+          
+          # Strip git ref prefix from version
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          
+          DOCKER_IMAGE=${{ secrets.DOCKER_USER }}/mlserver
+          
+          # Use Docker `latest` tag convention     
+          [ "$VERSION" == "main-thesis" ] && VERSION=latest
+          echo $VERSION
+          
+          TAGS="${DOCKER_IMAGE}:${VERSION}"
+          
+          # Set output parameters.
+          echo ::set-output name=tags::${TAGS}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+        with:
+          platforms: arm64
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Login to DockerHub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          target: runtime
+          tags: ${{ steps.prep.outputs.tags }}

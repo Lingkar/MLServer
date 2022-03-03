@@ -14,6 +14,7 @@ RUN apt-get update && \
     pip install --upgrade pip wheel setuptools
 
 RUN mkdir /opt/mlserver
+
 WORKDIR /opt/mlserver
 
 COPY setup.py .
